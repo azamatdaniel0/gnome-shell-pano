@@ -1,3 +1,6 @@
+# ⚠️ This project is no longer maintained, as I have transitioned to Hyprland. Please consider using [Copyous - Clipboard Manager](https://github.com/boerdereinar/copyous) instead.
+
+
 # <img width="32px" src="./io.elhan.Pano.svg" alt="Pano" /> Pano - Next-gen Clipboard Manager
 
 [![ts](https://badgen.net/badge/icon/typescript?icon=typescript&label)](#)
