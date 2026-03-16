@@ -1,3 +1,119 @@
+/* Pinboard Bar */
+.pano-pinboard-bar {
+  padding: 4px 14px 4px 14px;
+}
+
+.pano-pinboard-button-container {
+  spacing: 6px;
+}
+
+.pano-pinboard-pill {
+  border-radius: 999px;
+  padding: 4px 12px;
+  background-color: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.pano-pinboard-pill:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.pano-pinboard-pill.active {
+  background-color: rgba(53, 132, 228, 0.35);
+  border-color: rgb(53, 132, 228);
+  color: white;
+}
+
+.pano-pinboard-dot {
+  font-size: 10px;
+}
+
+.pano-pinboard-add-button {
+  border-radius: 999px;
+  padding: 4px 10px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.pano-pinboard-add-button:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.pano-pinboard-new-entry {
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  width: 120px;
+}
+
+.pano-pinboard-popup {
+  background-color: rgba(35, 35, 35, 0.97);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 4px;
+  spacing: 4px;
+}
+
+.pano-pinboard-popup-delete {
+  border-radius: 4px;
+  padding: 4px 10px;
+  background-color: rgba(237, 51, 59, 0.2);
+  border: 1px solid rgba(237, 51, 59, 0.5);
+  color: rgb(237, 51, 59);
+  font-size: 12px;
+}
+
+.pano-pinboard-popup-delete:hover {
+  background-color: rgba(237, 51, 59, 0.35);
+}
+
+.pano-pinboard-popup-cancel {
+  border-radius: 4px;
+  padding: 4px 10px;
+  background-color: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+}
+
+/* Assign to Pinboard dialog */
+.pano-assign-dialog {
+  border-radius: 8px;
+  background-color: rgba(35, 35, 35, 0.97);
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  spacing: 4px;
+}
+
+.pano-assign-dialog-title {
+  font-size: 12px;
+  font-weight: bold;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 2px 4px 6px 4px;
+}
+
+.pano-assign-dialog-row {
+  border-radius: 4px;
+  padding: 6px 10px;
+  background-color: transparent;
+  border: 1px solid transparent;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.pano-assign-dialog-row:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.pano-assign-dialog-row.assigned {
+  background-color: rgba(53, 132, 228, 0.15);
+  border-color: rgba(53, 132, 228, 0.4);
+}
+
 .pano-window.incognito {
   background-image: url('./images/incognito-mode.svg');
   background-size: 36px;

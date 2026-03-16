@@ -14,14 +14,15 @@ import { registerGObjectClass, SignalRepresentationType, SignalsDefinition } fro
 import { getPanoItemTypes } from '@pano/utils/panoItemType';
 import { getCurrentExtensionSettings } from '@pano/utils/shell';
 import { MetaCursorPointer, orientationCompatibility } from '@pano/utils/shell_compatibility';
-import { getVirtualKeyboard, WINDOW_POSITIONS } from '@pano/utils/ui';
+import { getLastFocusedWindowClass, getVirtualKeyboard, isTerminalWmClass, WINDOW_POSITIONS } from '@pano/utils/ui';
 
-export type PanoItemSignalType = 'on-remove' | 'on-favorite' | 'activated';
+export type PanoItemSignalType = 'on-remove' | 'on-favorite' | 'activated' | 'on-assign-pinboard';
 
 interface PanoItemSignals extends SignalsDefinition<PanoItemSignalType> {
   activated: Record<string, never>;
   'on-remove': SignalRepresentationType<[GObject.GType<string>]>;
   'on-favorite': SignalRepresentationType<[GObject.GType<string>]>;
+  'on-assign-pinboard': Record<string, never>;
 }
 
 @registerGObjectClass
@@ -38,6 +39,7 @@ export class PanoItem extends St.BoxLayout {
         param_types: [GObject.TYPE_STRING],
         accumulator: 0,
       },
+      'on-assign-pinboard': {},
     },
   };
 
@@ -88,29 +90,33 @@ export class PanoItem extends St.BoxLayout {
       }
 
       if (this.settings.get_boolean('paste-on-select') && this.clipboardManager.isTracking) {
+        // Capture the target window class before the timeout fires so we can
+        // choose the correct paste shortcut (Ctrl+Shift+V for terminals).
+        const targetWmClass = getLastFocusedWindowClass();
+        const useTerminalPaste = targetWmClass !== null && isTerminalWmClass(targetWmClass);
+
         // See https://github.com/SUPERCILEX/gnome-clipboard-history/blob/master/extension.js#L606
         this.timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 250, () => {
-          getVirtualKeyboard().notify_keyval(
-            Clutter.get_current_event_time(),
-            Clutter.KEY_Control_L,
-            Clutter.KeyState.RELEASED,
-          );
-          getVirtualKeyboard().notify_keyval(
-            Clutter.get_current_event_time(),
-            Clutter.KEY_Control_L,
-            Clutter.KeyState.PRESSED,
-          );
-          getVirtualKeyboard().notify_keyval(Clutter.get_current_event_time(), Clutter.KEY_v, Clutter.KeyState.PRESSED);
-          getVirtualKeyboard().notify_keyval(
-            Clutter.get_current_event_time(),
-            Clutter.KEY_Control_L,
-            Clutter.KeyState.RELEASED,
-          );
-          getVirtualKeyboard().notify_keyval(
-            Clutter.get_current_event_time(),
-            Clutter.KEY_v,
-            Clutter.KeyState.RELEASED,
-          );
+          const kbd = getVirtualKeyboard();
+          const t = Clutter.get_current_event_time();
+
+          if (useTerminalPaste) {
+            // Terminals use Ctrl+Shift+V for paste
+            kbd.notify_keyval(t, Clutter.KEY_Control_L, Clutter.KeyState.PRESSED);
+            kbd.notify_keyval(t, Clutter.KEY_Shift_L, Clutter.KeyState.PRESSED);
+            kbd.notify_keyval(t, Clutter.KEY_v, Clutter.KeyState.PRESSED);
+            kbd.notify_keyval(t, Clutter.KEY_v, Clutter.KeyState.RELEASED);
+            kbd.notify_keyval(t, Clutter.KEY_Shift_L, Clutter.KeyState.RELEASED);
+            kbd.notify_keyval(t, Clutter.KEY_Control_L, Clutter.KeyState.RELEASED);
+          } else {
+            // Standard Ctrl+V for all other applications
+            kbd.notify_keyval(t, Clutter.KEY_Control_L, Clutter.KeyState.RELEASED);
+            kbd.notify_keyval(t, Clutter.KEY_Control_L, Clutter.KeyState.PRESSED);
+            kbd.notify_keyval(t, Clutter.KEY_v, Clutter.KeyState.PRESSED);
+            kbd.notify_keyval(t, Clutter.KEY_Control_L, Clutter.KeyState.RELEASED);
+            kbd.notify_keyval(t, Clutter.KEY_v, Clutter.KeyState.RELEASED);
+          }
+
           if (this.timeoutId) {
             GLib.Source.remove(this.timeoutId);
           }
@@ -209,6 +215,13 @@ export class PanoItem extends St.BoxLayout {
     ) {
       this.dbItem = { ...this.dbItem, isFavorite: !this.dbItem.isFavorite };
       this.emit('on-favorite', JSON.stringify(this.dbItem));
+      return Clutter.EVENT_STOP;
+    }
+    if (
+      (event.get_key_symbol() === Clutter.KEY_B || event.get_key_symbol() === Clutter.KEY_b) &&
+      event.get_state() === Clutter.ModifierType.CONTROL_MASK
+    ) {
+      this.emit('on-assign-pinboard');
       return Clutter.EVENT_STOP;
     }
     return Clutter.EVENT_PROPAGATE;

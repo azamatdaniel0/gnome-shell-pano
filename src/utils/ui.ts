@@ -138,3 +138,46 @@ export const getAlignment = (position: number): [Clutter.ActorAlign, Clutter.Act
 export const isVertical = (position: number) => {
   return position === WINDOW_POSITIONS.LEFT || position === WINDOW_POSITIONS.RIGHT;
 };
+
+// WM class names for known terminal emulators (case-insensitive substring match).
+export const KNOWN_TERMINAL_WM_CLASSES: string[] = [
+  'gnome-terminal-server',
+  'org.gnome.terminal',
+  'kitty',
+  'alacritty',
+  'foot',
+  'xterm',
+  'uxterm',
+  'urxvt',
+  'urxvtd',
+  'wezterm-gui',
+  'tilix',
+  'terminator',
+  'konsole',
+  'xfce4-terminal',
+  'lxterminal',
+  'sakura',
+  'roxterm',
+  'st-256color',
+  'cool-retro-term',
+  'hyper',
+  'blackbox',
+  'ptyxis',
+];
+
+export const isTerminalWmClass = (wmClass: string): boolean => {
+  const lower = wmClass.toLowerCase();
+  return KNOWN_TERMINAL_WM_CLASSES.some((t) => lower.includes(t.toLowerCase()));
+};
+
+// Stores the WM class of the window that was focused before Pano opened.
+// Set by PanoWindow.show() so PanoItem can decide the correct paste shortcut.
+let lastFocusedWindowClass: string | null = null;
+
+export const setLastFocusedWindowClass = (wmClass: string | null): void => {
+  lastFocusedWindowClass = wmClass;
+};
+
+export const getLastFocusedWindowClass = (): string | null => {
+  return lastFocusedWindowClass;
+};

@@ -7,18 +7,20 @@ import Shell from '@girs/shell-17';
 import St from '@girs/st-17';
 import { MonitorBox } from '@pano/components/monitorBox';
 import { PanoScrollView } from '@pano/components/panoScrollView';
+import { PinboardBar } from '@pano/components/pinboardBar';
 import { SearchBox } from '@pano/components/searchBox';
 import { ClipboardManager } from '@pano/utils/clipboardManager';
 import { ItemType } from '@pano/utils/db';
 import { registerGObjectClass } from '@pano/utils/gjs';
 import { getCurrentExtensionSettings } from '@pano/utils/shell';
 import { orientationCompatibility } from '@pano/utils/shell_compatibility';
-import { getAlignment, getMonitorConstraint, isVertical } from '@pano/utils/ui';
+import { getAlignment, getMonitorConstraint, isVertical, setLastFocusedWindowClass } from '@pano/utils/ui';
 
 @registerGObjectClass
 export class PanoWindow extends St.BoxLayout {
   private scrollView: PanoScrollView;
   private searchBox: SearchBox;
+  private pinboardBar: PinboardBar;
   private monitorBox: MonitorBox;
   private settings: Gio.Settings;
 
@@ -71,13 +73,16 @@ export class PanoWindow extends St.BoxLayout {
     });
     this.monitorBox = new MonitorBox();
     this.searchBox = new SearchBox(ext);
+    this.pinboardBar = new PinboardBar(ext);
     this.scrollView = new PanoScrollView(ext, clipboardManager, this.searchBox);
 
     this.setupMonitorBox();
     this.setupScrollView();
     this.setupSearchBox();
+    this.setupPinboardBar();
 
     this.add_child(this.searchBox);
+    this.add_child(this.pinboardBar);
     this.add_child(this.scrollView);
 
     this.settings.connect('changed::is-in-incognito', () => {
@@ -106,7 +111,8 @@ export class PanoWindow extends St.BoxLayout {
       this.add_style_class_name('vertical');
       this.set_width((this.settings.get_int('item-size') + 20) * scaleFactor);
     } else {
-      this.set_height((this.settings.get_int('item-size') + 90) * scaleFactor);
+      // +90 for search box, +36 for pinboard bar
+      this.set_height((this.settings.get_int('item-size') + 126) * scaleFactor);
     }
   }
 
@@ -131,11 +137,24 @@ export class PanoWindow extends St.BoxLayout {
     this.searchBox.connect(
       'search-text-changed',
       (_: any, text: string, itemType: ItemType, showFavorites: boolean) => {
-        this.scrollView.filter(text, itemType, showFavorites);
+        const activePinboard = this.pinboardBar.getActivePinboardId() || null;
+        this.scrollView.filter(text, itemType, showFavorites, activePinboard);
       },
     );
     this.searchBox.connect('search-item-select-shortcut', (_: any, index: number) => {
       this.scrollView.selectItemByIndex(index);
+    });
+  }
+
+  private setupPinboardBar() {
+    this.pinboardBar.connect('pinboard-selected', (_: any, pinboardId: string) => {
+      this.searchBox.emitSearchTextChange();
+    });
+    this.pinboardBar.connect('pinboard-changed', () => {
+      this.searchBox.emitSearchTextChange();
+    });
+    this.scrollView.connect('scroll-assign-pinboard', (_: any, clipboardId: number) => {
+      this.pinboardBar.showAssignDialog(clipboardId);
     });
   }
 
@@ -178,6 +197,11 @@ export class PanoWindow extends St.BoxLayout {
   }
 
   override show() {
+    // Capture the previously focused window's WM class so PanoItem can use the
+    // correct paste shortcut (Ctrl+Shift+V for terminals vs Ctrl+V elsewhere).
+    const previousWindow = Shell.Global.get().display.focusWindow;
+    setLastFocusedWindowClass(previousWindow?.get_wm_class() ?? null);
+
     this.clear_constraints();
     this.setAlignment();
     this.add_constraint(getMonitorConstraint());
@@ -227,6 +251,7 @@ export class PanoWindow extends St.BoxLayout {
   override destroy(): void {
     this.monitorBox.destroy();
     this.searchBox.destroy();
+    this.pinboardBar.destroy();
     this.scrollView.destroy();
     super.destroy();
   }

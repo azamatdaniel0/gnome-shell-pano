@@ -162,6 +162,11 @@
       <summary>hovered-item-border-color</summary>
       <description>hovered-item-border-color</description>
     </key>
+    <key name="pinboards" type="s">
+      <default>'[]'</default>
+      <summary>Pinboards</summary>
+      <description>JSON array of pinboard definitions: [{id, name, color}]</description>
+    </key>
 
     <child name="link-item" schema="org.gnome.shell.extensions.pano.link-item" />
     <child name="text-item" schema="org.gnome.shell.extensions.pano.text-item" />

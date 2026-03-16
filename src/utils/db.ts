@@ -6,6 +6,12 @@ const debug = logger('database');
 
 export type ItemType = 'IMAGE' | 'LINK' | 'TEXT' | 'CODE' | 'COLOR' | 'EMOJI' | 'FILE';
 
+export type PinboardDefinition = {
+  id: string;
+  name: string;
+  color: string;
+};
+
 export type DBItem = {
   id: number;
   itemType: ItemType;
@@ -205,6 +211,19 @@ class Database {
     this.connection.execute_non_select_command(`
       create unique index if not exists clipboard_id_uindex on clipboard (id);
     `);
+
+    this.connection.execute_non_select_command(`
+      create table if not exists pinboard_items
+      (
+          pinboard_id  text    not null,
+          clipboard_id integer not null,
+          constraint pinboard_items_pk primary key (pinboard_id, clipboard_id)
+      );
+    `);
+
+    this.connection.execute_non_select_command(`
+      create index if not exists pinboard_items_pinboard_id_idx on pinboard_items (pinboard_id);
+    `);
   }
 
   save(dbItem: SaveDBItem): DBItem | null {
@@ -289,6 +308,9 @@ class Database {
       return;
     }
 
+    // Remove pinboard memberships before deleting the clipboard item
+    this.deletePinboardItemsForClipboard(id);
+
     const builder = new Gda5.SqlBuilder({
       stmt_type: Gda5.SqlStatementType.DELETE,
     });
@@ -303,6 +325,73 @@ class Database {
       ),
     );
     this.connection.statement_execute_non_select(builder.get_statement(), null);
+  }
+
+  addItemToPinboard(pinboardId: string, clipboardId: number): void {
+    if (!this.connection || !this.connection.is_opened()) {
+      debug('connection is not opened');
+      return;
+    }
+    this.connection.execute_non_select_command(
+      `INSERT OR REPLACE INTO pinboard_items (pinboard_id, clipboard_id) VALUES ('${pinboardId}', ${clipboardId})`,
+    );
+  }
+
+  removeItemFromPinboard(pinboardId: string, clipboardId: number): void {
+    if (!this.connection || !this.connection.is_opened()) {
+      debug('connection is not opened');
+      return;
+    }
+    this.connection.execute_non_select_command(
+      `DELETE FROM pinboard_items WHERE pinboard_id = '${pinboardId}' AND clipboard_id = ${clipboardId}`,
+    );
+  }
+
+  deletePinboard(pinboardId: string): void {
+    if (!this.connection || !this.connection.is_opened()) {
+      debug('connection is not opened');
+      return;
+    }
+    this.connection.execute_non_select_command(`DELETE FROM pinboard_items WHERE pinboard_id = '${pinboardId}'`);
+  }
+
+  deletePinboardItemsForClipboard(clipboardId: number): void {
+    if (!this.connection || !this.connection.is_opened()) {
+      return;
+    }
+    this.connection.execute_non_select_command(
+      `DELETE FROM pinboard_items WHERE clipboard_id = ${clipboardId}`,
+    );
+  }
+
+  queryPinboardItemIds(pinboardId: string): number[] {
+    if (!this.connection || !this.connection.is_opened()) {
+      return [];
+    }
+    const dm = this.connection.execute_select_command(
+      `SELECT clipboard_id FROM pinboard_items WHERE pinboard_id = '${pinboardId}'`,
+    );
+    const iter = dm.create_iter();
+    const ids: number[] = [];
+    while (iter.move_next()) {
+      ids.push(iter.get_value_for_field('clipboard_id') as unknown as number);
+    }
+    return ids;
+  }
+
+  queryPinboardsForItem(clipboardId: number): string[] {
+    if (!this.connection || !this.connection.is_opened()) {
+      return [];
+    }
+    const dm = this.connection.execute_select_command(
+      `SELECT pinboard_id FROM pinboard_items WHERE clipboard_id = ${clipboardId}`,
+    );
+    const iter = dm.create_iter();
+    const ids: string[] = [];
+    while (iter.move_next()) {
+      ids.push(iter.get_value_for_field('pinboard_id') as unknown as string);
+    }
+    return ids;
   }
 
   query(clipboardQuery: ClipboardQuery): DBItem[] {

@@ -22,7 +22,8 @@ export type PanoScrollViewSignalType =
   | 'scroll-alt-press'
   | 'scroll-tab-press'
   | 'scroll-backspace-press'
-  | 'scroll-key-press';
+  | 'scroll-key-press'
+  | 'scroll-assign-pinboard';
 
 interface PanoScrollViewSignals extends SignalsDefinition<PanoScrollViewSignalType> {
   'scroll-focus-out': Record<string, never>;
@@ -31,6 +32,7 @@ interface PanoScrollViewSignals extends SignalsDefinition<PanoScrollViewSignalTy
   'scroll-tab-press': SignalRepresentationType<[GObject.GType<boolean>]>;
   'scroll-backspace-press': Record<string, never>;
   'scroll-key-press': SignalRepresentationType<[GObject.GType<string>]>;
+  'scroll-assign-pinboard': SignalRepresentationType<[GObject.GType<number>]>;
 }
 
 //TODO: the list member of St.BoxLayout are of type Clutter.Actor and we have to cast constantly from PanoItem to Clutter.Actor and reverse, fix that somehow
@@ -52,6 +54,10 @@ export class PanoScrollView extends St.ScrollView {
         param_types: [GObject.TYPE_STRING],
         accumulator: 0,
       },
+      'scroll-assign-pinboard': {
+        param_types: [GObject.TYPE_INT],
+        accumulator: 0,
+      },
     },
   };
 
@@ -61,6 +67,7 @@ export class PanoScrollView extends St.ScrollView {
   private currentFilter: string | null = null;
   private currentItemTypeFilter: ItemType | null = null;
   private showFavorites: boolean | null = null;
+  private currentPinboardId: string | null = null;
   private searchBox: SearchBox;
   private ext: ExtensionBase;
   private clipboardChangedSignalId: number | null = null;
@@ -155,6 +162,7 @@ export class PanoScrollView extends St.ScrollView {
         });
         this.connectOnRemove(panoItem);
         this.connectOnFavorite(panoItem);
+        this.connectOnAssignPinboard(panoItem);
         this.list.add_child(panoItem);
       }
     });
@@ -174,7 +182,7 @@ export class PanoScrollView extends St.ScrollView {
         const panoItem = await createPanoItem(ext, this.clipboardManager, content);
         if (panoItem && this) {
           this.prependItem(panoItem);
-          this.filter(this.currentFilter, this.currentItemTypeFilter, this.showFavorites);
+          this.filter(this.currentFilter, this.currentItemTypeFilter, this.showFavorites, this.currentPinboardId);
         }
       },
     );
@@ -197,6 +205,7 @@ export class PanoScrollView extends St.ScrollView {
 
     this.connectOnRemove(panoItem);
     this.connectOnFavorite(panoItem);
+    this.connectOnAssignPinboard(panoItem);
 
     panoItem.connect('motion-event', () => {
       if (this.isHovering(this.searchBox)) {
@@ -224,13 +233,19 @@ export class PanoScrollView extends St.ScrollView {
     });
   }
 
+  private connectOnAssignPinboard(panoItem: PanoItem) {
+    panoItem.connect('on-assign-pinboard', () => {
+      this.emit('scroll-assign-pinboard', panoItem.dbItem.id);
+    });
+  }
+
   private connectOnRemove(panoItem: PanoItem) {
     panoItem.connect('on-remove', () => {
       if (this.currentFocus === panoItem) {
         this.focusNext() || this.focusPrev();
       }
       this.removeItem(panoItem);
-      this.filter(this.currentFilter, this.currentItemTypeFilter, this.showFavorites);
+      this.filter(this.currentFilter, this.currentItemTypeFilter, this.showFavorites, this.currentPinboardId);
       if (this.getVisibleItems().length === 0) {
         this.emit('scroll-focus-out');
       } else {
@@ -307,11 +322,13 @@ export class PanoScrollView extends St.ScrollView {
     return false;
   }
 
-  filter(text: string | null, itemType: ItemType | null, showFavorites: boolean | null) {
+  filter(text: string | null, itemType: ItemType | null, showFavorites: boolean | null, pinboardId?: string | null) {
     this.currentFilter = text;
     this.currentItemTypeFilter = itemType;
     this.showFavorites = showFavorites;
-    if (!text && !itemType && null === showFavorites) {
+    this.currentPinboardId = pinboardId ?? null;
+
+    if (!text && !itemType && null === showFavorites && !pinboardId) {
       this.getItems().forEach((i) => i.show());
       return;
     }
@@ -330,7 +347,13 @@ export class PanoScrollView extends St.ScrollView {
       builder.withContainingSearchValue(text);
     }
 
-    const result = db.query(builder.build()).map((dbItem) => dbItem.id);
+    let result = db.query(builder.build()).map((dbItem) => dbItem.id);
+
+    // Intersect with pinboard membership when a board is selected
+    if (pinboardId) {
+      const pinboardIds = db.queryPinboardItemIds(pinboardId);
+      result = result.filter((id) => pinboardIds.includes(id));
+    }
 
     this.getItems().forEach((item) => (result.indexOf(item.dbItem.id) >= 0 ? item.show() : item.hide()));
   }
