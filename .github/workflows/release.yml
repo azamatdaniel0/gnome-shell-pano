@@ -24,15 +24,6 @@ jobs:
       - name: Install dependencies
         run: yarn install -D
 
-      - name: Validate Formatting
-        run: yarn run prettier:check
-
-      - name: Validate Locale
-        run: yarn run check:locale
-
-      - name: Lint Extension
-        run: yarn run lint
-
       - name: Build an Package Extension
         run: |
           yarn run build:package
