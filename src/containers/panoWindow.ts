@@ -147,7 +147,7 @@ export class PanoWindow extends St.BoxLayout {
   }
 
   private setupPinboardBar() {
-    this.pinboardBar.connect('pinboard-selected', (_: any, pinboardId: string) => {
+    this.pinboardBar.connect('pinboard-selected', () => {
       this.searchBox.emitSearchTextChange();
     });
     this.pinboardBar.connect('pinboard-changed', () => {
