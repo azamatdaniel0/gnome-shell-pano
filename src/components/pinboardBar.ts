@@ -6,6 +6,7 @@ import GLib from '@girs/glib-2.0';
 import type { ExtensionBase } from '@girs/gnome-shell/dist/extensions/sharedInternals';
 import GObject from '@girs/gobject-2.0';
 import St from '@girs/st-17';
+
 import { scrollViewAddChild } from '@pano/utils/compatibility';
 import { db, PinboardDefinition } from '@pano/utils/db';
 import { registerGObjectClass, SignalRepresentationType, SignalsDefinition } from '@pano/utils/gjs';
@@ -47,6 +48,7 @@ export class PinboardBar extends St.BoxLayout {
   private activePinboardId: string = ''; // '' = "Clipboard History" (show all)
   private buttonContainer: St.BoxLayout;
   private settingsChangedId: number | null = null;
+  private pills: Map<string, St.Button> = new Map();
 
   constructor(ext: ExtensionBase) {
     super({
@@ -90,6 +92,7 @@ export class PinboardBar extends St.BoxLayout {
 
   private rebuildButtons(): void {
     this.buttonContainer.remove_all_children();
+    this.pills.clear();
 
     // Default "Clipboard History" pill
     this.buttonContainer.add_child(this.createPill('', this.gettext('Clipboard History'), ''));
@@ -160,9 +163,28 @@ export class PinboardBar extends St.BoxLayout {
         }
         return Clutter.EVENT_PROPAGATE;
       });
+      this.pills.set(id, pill);
     }
 
     return pill;
+  }
+
+  public dropAtPosition(itemId: number, x: number, y: number): void {
+    for (const [pinboardId, pill] of this.pills) {
+      const [px, py] = pill.get_transformed_position();
+      const pw = pill.get_width();
+      const ph = pill.get_height();
+      if (x >= px && x <= px + pw && y >= py && y <= py + ph) {
+        db.addItemToPinboard(pinboardId, itemId);
+        this.emit('pinboard-changed');
+        pill.add_style_class_name('drop-success');
+        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 600, () => {
+          pill.remove_style_class_name('drop-success');
+          return GLib.SOURCE_REMOVE;
+        });
+        return;
+      }
+    }
   }
 
   private showDeleteConfirm(pinboardId: string, name: string, anchor: St.Button): void {
@@ -283,69 +305,74 @@ export class PinboardBar extends St.BoxLayout {
 
     const currentBoardIds = db.queryPinboardsForItem(clipboardId);
 
-    // Build a floating overlay anchored at the top of this bar
-    const overlay = new St.BoxLayout({
-      styleClass: 'pano-assign-dialog',
-      ...orientationCompatibility(true),
-      reactive: true,
-    });
+    // Replace button container content with inline assign UI
+    this.buttonContainer.remove_all_children();
 
     const titleLabel = new St.Label({
-      text: this.gettext('Add to Pinboard'),
+      text: this.gettext('Add to Pinboard:'),
       styleClass: 'pano-assign-dialog-title',
+      yAlign: Clutter.ActorAlign.CENTER,
     });
-    overlay.add_child(titleLabel);
+    this.buttonContainer.add_child(titleLabel);
 
     for (const board of boards) {
-      const isAssigned = currentBoardIds.includes(board.id);
-      const rowBtn = new St.Button({
-        styleClass: `pano-assign-dialog-row${isAssigned ? ' assigned' : ''}`,
+      let assigned = currentBoardIds.includes(board.id);
+
+      const pill = new St.Button({
+        styleClass: `pano-pinboard-pill${assigned ? ' active' : ''}`,
+        xExpand: false,
         reactive: true,
-        xExpand: true,
       });
 
-      const rowBox = new St.BoxLayout({ ...orientationCompatibility(false) });
-      const dot = new St.Label({ text: '● ', styleClass: 'pano-pinboard-dot' });
+      const dot = new St.Label({
+        text: '● ',
+        yAlign: Clutter.ActorAlign.CENTER,
+        styleClass: 'pano-pinboard-dot',
+      });
       dot.set_style(`color: ${board.color};`);
-      const nameLabel = new St.Label({ text: board.name, xExpand: true });
-      const checkLabel = new St.Label({ text: isAssigned ? '✓' : '' });
 
-      rowBox.add_child(dot);
-      rowBox.add_child(nameLabel);
-      rowBox.add_child(checkLabel);
-      rowBtn.set_child(rowBox);
+      const nameLabel = new St.Label({ text: board.name, yAlign: Clutter.ActorAlign.CENTER });
+      const checkLabel = new St.Label({ text: assigned ? ' ✓' : '', yAlign: Clutter.ActorAlign.CENTER });
 
-      rowBtn.connect('clicked', () => {
-        if (isAssigned) {
+      const box = new St.BoxLayout({ ...orientationCompatibility(false) });
+      box.add_child(dot);
+      box.add_child(nameLabel);
+      box.add_child(checkLabel);
+      pill.set_child(box);
+
+      pill.connect('clicked', () => {
+        if (assigned) {
           db.removeItemFromPinboard(board.id, clipboardId);
+          assigned = false;
         } else {
           db.addItemToPinboard(board.id, clipboardId);
+          assigned = true;
         }
-        overlay.destroy();
+        checkLabel.set_text(assigned ? ' ✓' : '');
+        if (assigned) {
+          pill.add_style_class_name('active');
+        } else {
+          pill.remove_style_class_name('active');
+        }
         this.emit('pinboard-changed');
         return Clutter.EVENT_PROPAGATE;
       });
 
-      overlay.add_child(rowBtn);
+      this.buttonContainer.add_child(pill);
     }
 
     const closeBtn = new St.Button({
       styleClass: 'pano-pinboard-add-button',
-      label: this.gettext('Close'),
-      xExpand: true,
+      label: '✕',
+      xExpand: false,
       reactive: true,
     });
     closeBtn.connect('clicked', () => {
-      overlay.destroy();
+      this.rebuildButtons();
       return Clutter.EVENT_PROPAGATE;
     });
-    overlay.add_child(closeBtn);
-
-    // Add overlay as sibling in the pano-window
-    const panoWindow = this.get_parent();
-    if (panoWindow) {
-      panoWindow.add_child(overlay);
-    }
+    this.buttonContainer.add_child(closeBtn);
+    closeBtn.grab_key_focus();
   }
 
   getActivePinboardId(): string {

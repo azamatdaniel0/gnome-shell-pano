@@ -17,6 +17,7 @@
 - 🧠 Content aware previews and notifications (Image, Link, Text, Code, Color, Emoji, File). See [Notifications](#content-aware-notifications)
 - 🎨 Highly customizable UI with slick design. See [Customization](#settings)
 - ⭐ Favorite any items and access them easily. See [Favorites](#favorites)
+- 📌 Pinboards — organize clipboard items into named groups. Right-click any item to assign it to one or more pinboards.
 - ⚙️ And many more options for different needs. See [Settings](#settings)
 
 ## Settings

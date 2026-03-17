@@ -23,7 +23,8 @@ export type PanoScrollViewSignalType =
   | 'scroll-tab-press'
   | 'scroll-backspace-press'
   | 'scroll-key-press'
-  | 'scroll-assign-pinboard';
+  | 'scroll-assign-pinboard'
+  ;
 
 interface PanoScrollViewSignals extends SignalsDefinition<PanoScrollViewSignalType> {
   'scroll-focus-out': Record<string, never>;

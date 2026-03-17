@@ -170,6 +170,7 @@ export class PanoItem extends St.BoxLayout {
     });
 
     this.setBodyDimensions();
+
   }
 
   private setBodyDimensions() {
@@ -230,6 +231,11 @@ export class PanoItem extends St.BoxLayout {
   override vfunc_button_release_event(event: Clutter.Event): boolean {
     if (event.get_button() === 1) {
       this.emit('activated');
+      return Clutter.EVENT_STOP;
+    }
+
+    if (event.get_button() === 3) {
+      this.emit('on-assign-pinboard');
       return Clutter.EVENT_STOP;
     }
 
