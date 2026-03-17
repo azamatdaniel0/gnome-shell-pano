@@ -1,7 +1,29 @@
-# ⚠️ This project is no longer maintained, as I have transitioned to Hyprland. Please consider using [Copyous - Clipboard Manager](https://github.com/boerdereinar/copyous) instead.
-
-
 # <img width="32px" src="./io.elhan.Pano.svg" alt="Pano" /> Pano - Next-gen Clipboard Manager
+
+> This is a community fork with active development. Original project: [oae/gnome-shell-pano](https://github.com/oae/gnome-shell-pano)
+
+## Build & Install from source
+
+**Requirements:** Node.js v20+, yarn, GNOME Shell 45+
+
+```bash
+git clone https://github.com/azamatdaniel0/gnome-shell-pano.git
+cd gnome-shell-pano
+
+# Install dependencies (requires Node 20+, use nvm if needed)
+# nvm install --lts && nvm use --lts
+
+yarn install
+yarn build
+
+# Deploy to GNOME extensions folder
+cp -r dist/* ~/.local/share/gnome-shell/extensions/pano@elhan.io/
+
+# Enable the extension
+gnome-extensions enable pano@elhan.io
+```
+
+> After enabling, log out and log back in (or restart GNOME Shell with `Alt+F2` → `r`) for changes to take effect.
 
 [![ts](https://badgen.net/badge/icon/typescript?icon=typescript&label)](#)
 [![opensource](https://badges.frapsoft.com/os/v1/open-source.png?v=103)](#)
