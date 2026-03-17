@@ -4,26 +4,59 @@
 
 ## Build & Install from source
 
-**Requirements:** Node.js v20+, yarn, GNOME Shell 45+
+### 1. Install system dependencies
+
+**nvm** (Node version manager):
+```bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+source ~/.bashrc  # or ~/.zshrc
+```
+
+**Node.js v20+ via nvm:**
+```bash
+nvm install --lts
+nvm use --lts
+```
+
+**yarn** (via corepack, included with Node):
+```bash
+corepack enable
+```
+
+**gnome-extensions CLI** (Ubuntu/Debian):
+```bash
+sudo apt install gnome-shell-extensions
+```
+
+**gnome-extensions CLI** (Fedora):
+```bash
+sudo dnf install gnome-extensions-app
+```
+
+### 2. Clone and build
 
 ```bash
 git clone https://github.com/azamatdaniel0/gnome-shell-pano.git
 cd gnome-shell-pano
 
-# Install dependencies (requires Node 20+, use nvm if needed)
-# nvm install --lts && nvm use --lts
-
 yarn install
 yarn build
+```
 
-# Deploy to GNOME extensions folder
+### 3. Deploy and enable
+
+```bash
+# Create extension directory if it doesn't exist
+mkdir -p ~/.local/share/gnome-shell/extensions/pano@elhan.io
+
+# Copy built files
 cp -r dist/* ~/.local/share/gnome-shell/extensions/pano@elhan.io/
 
 # Enable the extension
 gnome-extensions enable pano@elhan.io
 ```
 
-> After enabling, log out and log back in (or restart GNOME Shell with `Alt+F2` → `r`) for changes to take effect.
+> After enabling, log out and log back in for changes to take effect.
 
 [![ts](https://badgen.net/badge/icon/typescript?icon=typescript&label)](#)
 [![opensource](https://badges.frapsoft.com/os/v1/open-source.png?v=103)](#)
